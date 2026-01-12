@@ -1,0 +1,5 @@
+{
+  "name": "Predictive Coding Explorer",
+  "description": "An interactive playground to visualize and explore the neuroscience-inspired Predictive Coding theory, featuring real-time neural simulation and AI-powered explanations.",
+  "requestFramePermissions": []
+}
