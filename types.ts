@@ -1,9 +1,13 @@
 
 export interface SimulationState {
   layerSizes: number[];
-  weights: number[][][]; // [layer][row][col]
-  rStates: number[][];   // [layer][neuron]
-  errors: number[][];    // [layer][neuron]
+  weights: number[][][]; // Forward weights W
+  feedbackWeights: number[][][]; // Fixed random feedback matrices B
+  rStatesFree: number[][]; // "Free" equilibrium states
+  rStatesNudged: number[][]; // "Nudged" equilibrium states
+  target: number[]; // Supervisory signal y
+  currentPhase: 'free' | 'nudged';
+  errors: number[][];
   totalError: number;
   history: number[];
   step: number;
@@ -13,5 +17,6 @@ export interface SimulationState {
 export interface SimParams {
   etaInfer: number;
   alphaLearn: number;
+  betaEp: number;
   tSteps: number;
 }
