@@ -7,60 +7,67 @@ interface Props {
 }
 
 const NetworkVisualizer: React.FC<Props> = ({ state }) => {
-  const { layerSizes, rStatesFree, rStatesNudged, currentPhase, target } = state;
+  const { layerSizes, rStatesFree, rStatesNegative, currentPhase, goodness } = state;
   const width = 800;
   const height = 450;
-  const padding = 80;
+  const padding = 100;
 
   const layerSpacing = (width - 2 * padding) / (layerSizes.length - 1);
-  const rCurrent = currentPhase === 'free' ? rStatesFree : rStatesNudged;
+  const rCurrent = currentPhase === 'contrast' ? rStatesNegative : rStatesFree;
 
   return (
-    <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden group">
-      {/* Quantum Coupler Aesthetic Background */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
+    <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-2xl relative overflow-hidden group">
+      {/* Quantum Field Noise Filter */}
+      <div className="absolute inset-0 opacity-[0.15] pointer-events-none">
         <svg className="w-full h-full">
-          <filter id="quantum-noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" seed="5" />
-            <feDisplacementMap in="SourceGraphic" scale="20" />
+          <filter id="ff-resonance">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="4" seed={state.step} />
+            <feColorMatrix type="saturate" values="2" />
+            <feGaussianBlur stdDeviation="2" />
           </filter>
-          <rect width="100%" height="100%" filter="url(#quantum-noise)" className="animate-pulse fill-indigo-500" />
+          <rect width="100%" height="100%" filter="url(#ff-resonance)" className="fill-indigo-600" />
         </svg>
       </div>
 
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className="text-xs font-mono text-slate-500 uppercase tracking-widest">
-          MKone Unified Framework Visualizer
+      <div className="flex justify-between items-center mb-6 relative z-10">
+        <div>
+          <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] mb-1">Entanglement State Visualizer</div>
+          <div className="text-xs font-bold text-slate-400">MKone v2.5 / Hybrid-Forward</div>
         </div>
-        <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter transition-all duration-500 ${
-          currentPhase === 'free' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30'
+        <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-700 shadow-lg ${
+          currentPhase === 'inference' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20 shadow-sky-500/5' : 
+          currentPhase === 'nudging' ? 'bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 shadow-fuchsia-500/5' :
+          'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-amber-500/5'
         }`}>
-          Phase: {currentPhase}
+          {currentPhase} Mode
         </div>
       </div>
 
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto mt-4 relative z-10">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto relative z-10">
+        <defs>
+          <radialGradient id="node-glow">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
         {/* Connection paths */}
         {layerSizes.slice(0, -1).map((_, i) => {
           const x1 = padding + i * layerSpacing;
           const x2 = padding + (i + 1) * layerSpacing;
+          const g_val = goodness.pos[i] || 0;
           return (
             <g key={`path-${i}`}>
-              {/* Forward Weights */}
-              <line 
-                x1={x1} y1={height / 2} 
-                x2={x2} y2={height / 2} 
-                stroke="#1e293b" 
-                strokeWidth="4" 
-              />
-              {/* Feedback Alignment Path Visual (FA) */}
+              {/* Field Coupling */}
               <path 
-                d={`M ${x2} ${height/2} Q ${(x1+x2)/2} ${height/2 + 60} ${x1} ${height/2}`}
+                d={`M ${x1} ${height/2} C ${(x1+x2)/2} ${height/2 - 40}, ${(x1+x2)/2} ${height/2 + 40}, ${x2} ${height/2}`}
                 fill="none"
-                stroke="rgba(162, 28, 175, 0.1)"
-                strokeWidth="1"
-                strokeDasharray="4 4"
+                stroke={currentPhase === 'contrast' ? '#f59e0b' : '#38bdf8'}
+                strokeWidth={1 + g_val * 0.5}
+                strokeOpacity={0.1 + g_val * 0.1}
+                className="transition-all duration-700"
               />
+              <line x1={x1} y1={height / 2} x2={x2} y2={height / 2} stroke="#1e293b" strokeWidth="2" />
             </g>
           );
         })}
@@ -69,50 +76,57 @@ const NetworkVisualizer: React.FC<Props> = ({ state }) => {
         {layerSizes.map((size, i) => {
           const x = padding + i * layerSpacing;
           const y = height / 2;
-          const nodeRadius = 24;
+          const nodeRadius = 22;
+          
+          const gPos = goodness.pos[i] || 0;
+          const gNeg = goodness.neg[i] || 0;
           
           const activity = rCurrent[i]?.reduce((a, b) => a + Math.abs(b), 0) / (size || 1);
-          const color = currentPhase === 'free' ? '56, 189, 248' : '192, 38, 211';
-          const nodeFill = `rgba(${color}, ${Math.min(1, activity * 5 + 0.1)})`;
-          const nodeStroke = `rgb(${color})`;
+          const colorClass = currentPhase === 'contrast' ? 'text-amber-500' : currentPhase === 'nudging' ? 'text-fuchsia-500' : 'text-sky-500';
 
           return (
-            <g key={`layer-${i}`}>
+            <g key={`layer-${i}`} className="transition-all duration-700">
+              {/* Resonance Halo */}
               <circle 
-                cx={x} cy={y} r={nodeRadius} 
-                fill={nodeFill} 
-                stroke={nodeStroke} 
-                strokeWidth="2"
-                className="transition-all duration-500"
+                cx={x} cy={y} r={nodeRadius + (gPos * 5)} 
+                className={colorClass}
+                fill="url(#node-glow)" 
               />
               
-              <text x={x} y={y + 45} className="fill-slate-400 text-[10px] font-bold" textAnchor="middle">Layer {i}</text>
-              
-              {/* Target Signal Visual (Supervisory) */}
-              {i === layerSizes.length - 1 && (
-                <g className="animate-bounce">
-                  <circle cx={x} cy={y - 80} r={12} fill="none" stroke="#f472b6" strokeWidth="2" strokeDasharray="2 2" />
-                  <line x1={x} y1={y - 68} x2={x} y2={y - 25} stroke="#f472b6" strokeWidth="2" strokeDasharray="4 2" />
-                  <text x={x} y={y - 100} className="fill-pink-400 text-[10px] font-bold uppercase" textAnchor="middle">Supervisory Target (y)</text>
-                </g>
-              )}
+              {/* Core Node */}
+              <circle 
+                cx={x} cy={y} r={nodeRadius} 
+                fill="#0f172a" 
+                stroke="currentColor" 
+                strokeWidth="2"
+                className={`${colorClass} transition-all duration-700`}
+              />
+
+              {/* Activity Indicator Bar inside node */}
+              <rect x={x-10} y={y-2} width={20} height={4} rx={2} fill="#1e293b" />
+              <rect x={x-10} y={y-2} width={Math.min(20, activity * 40)} height={4} rx={2} fill="currentColor" className={colorClass} />
+
+              <text x={x} y={y + 48} className="fill-slate-500 text-[9px] font-mono uppercase tracking-tighter" textAnchor="middle">Layer {i}</text>
+              <text x={x} y={y - 35} className={`text-[8px] font-bold uppercase tracking-tighter transition-all ${colorClass}`} textAnchor="middle">
+                {currentPhase === 'contrast' ? `NEG G: ${gNeg.toFixed(1)}` : `POS G: ${gPos.toFixed(1)}`}
+              </text>
             </g>
           );
         })}
       </svg>
       
-      <div className="mt-4 flex flex-wrap justify-center gap-6 text-[10px] uppercase font-mono tracking-wider">
+      <div className="mt-6 flex flex-wrap justify-center gap-8 text-[10px] uppercase font-mono tracking-widest">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-sky-500"></div>
-          <span className="text-slate-400">Free Activity (r_free)</span>
+          <div className="w-3 h-3 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.5)]"></div>
+          <span className="text-slate-400">Coherent Resonance (Goodness)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-fuchsia-500"></div>
-          <span className="text-slate-400">Nudged Activity (r_nudge)</span>
+          <div className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
+          <span className="text-slate-400">Decoherent Contrast (Negative)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-t border-fuchsia-400 border-dashed"></div>
-          <span className="text-slate-400">EP Nudging Force</span>
+          <div className="w-5 h-px bg-slate-700"></div>
+          <span className="text-slate-500">Field Entanglement</span>
         </div>
       </div>
     </div>

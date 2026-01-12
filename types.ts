@@ -1,13 +1,14 @@
 
 export interface SimulationState {
   layerSizes: number[];
-  weights: number[][][]; // Forward weights W
-  feedbackWeights: number[][][]; // Fixed random feedback matrices B
-  rStatesFree: number[][]; // "Free" equilibrium states
-  rStatesNudged: number[][]; // "Nudged" equilibrium states
-  target: number[]; // Supervisory signal y
-  currentPhase: 'free' | 'nudged';
-  errors: number[][];
+  weights: number[][][];
+  feedbackWeights: number[][][];
+  rStatesFree: number[][]; // Also used as Positive Phase for FF
+  rStatesNudged: number[][]; 
+  rStatesNegative: number[][]; // Negative Phase for FF
+  goodness: { pos: number[]; neg: number[] };
+  target: number[];
+  currentPhase: 'inference' | 'nudging' | 'contrast';
   totalError: number;
   history: number[];
   step: number;
@@ -18,5 +19,6 @@ export interface SimParams {
   etaInfer: number;
   alphaLearn: number;
   betaEp: number;
+  thetaFF: number; // Threshold for Goodness
   tSteps: number;
 }
